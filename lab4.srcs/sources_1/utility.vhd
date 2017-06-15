@@ -19,6 +19,10 @@ package utility is
                 
     function seg7_to_str (an, cath: std_logic_vector (7 downto 0))
                 return string;
+                
+    -- RGB4 is a 4 bit RGB array value used for the VGA controller                 
+    type RGB4 is array (2 downto 0) of std_logic_vector (3 downto 0);
+        
 end package;
 
 package body utility is
