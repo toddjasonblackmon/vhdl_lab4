@@ -15,6 +15,7 @@ use ieee.numeric_std.all;
 use work.all;
 use work.utility.all;
 use std.textio.all;
+use ieee.std_logic_textio.all;
 
 entity vga_controller_tb is
 end vga_controller_tb;
@@ -55,21 +56,39 @@ begin
         file file_RESULTS : text; 
         variable sample : line;
         variable t : time;
-        variable pix_r_var, pix_g_var, pix_b_var : bit_vector (3 downto 0);
+        variable pix_r_var, pix_g_var, pix_b_var : std_logic_vector (3 downto 0);
+        variable RED_var, GRN_var, BLU_var : std_logic_vector (3 downto 0);
+        variable out_valid : std_logic;
+        variable rst_var : std_logic;
         constant dummy : bit := '1';
     begin
         while not endfile (data_fp) loop
             readline (data_fp, sample);
             read (sample, t);
+            read (sample, rst_var);
             read (sample, pix_r_var);
             read (sample, pix_g_var);
             read (sample, pix_b_var);
+            read (sample, out_valid);
+            if (out_valid = '1') then
+                read (sample, RED_var);
+                read (sample, GRN_var);
+                read (sample, BLU_var);
+            end if;
             
             wait for t;
-            pix_r <= to_stdlogicvector(pix_r_var);
-            pix_g <= to_stdlogicvector(pix_g_var);
-            pix_b <= to_stdlogicvector(pix_b_var);
-            wait for 10 ns;
+            
+            -- Drive inputs
+            rst <= rst_var;
+            pix_r <= pix_r_var;
+            pix_g <= pix_g_var;
+            pix_b <= pix_b_var;
+            
+            if (out_valid = '1') then            
+                assert RED = RED_var report "Red output does not match" severity Error;
+                assert GRN = GRN_var report "Green output does not match" severity Error;
+                assert BLU = BLU_var report "Blue output does not match" severity Error;
+            end if;
         end loop;
         sim_run <= '0';
         report "Simulation successful"; 
