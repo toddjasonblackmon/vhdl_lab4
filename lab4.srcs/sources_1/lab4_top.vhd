@@ -33,16 +33,57 @@ entity lab4_top is
 end lab4_top;
 
 architecture Behavioral of lab4_top is
+    signal clk : std_logic;
     signal rst : std_logic;
     signal cursor_row : std_logic_vector (7 downto 0);
     signal cursor_col : std_logic_vector (7 downto 0);
     signal seg7_disp_value : std_logic_vector (31 downto 0);
     signal anode : std_logic_vector (7 downto 0);
+    signal up, down, left, right : std_logic;
+    signal rst_s1 : std_logic;
 begin
+    -- Internal signal rename
+    clk <= CLK100MHZ;
 
-    -- We only show the lower 16 bits of the display controller for
-    -- an XY format in hex.
-    seg7_disp_value <= "0000000000000000" & cursor_col & cursor_row;
+    -- Async enable reset, synchronous disable
+    -- Purpose is to ensure that all flops come out 
+    -- of reset on same clock.
+    process (clk, SW)
+    begin
+        if (SW = '1') then
+            rst_s1 <= '1';
+            rst <= '1';
+        elsif (rising_edge(clk)) then
+            rst_s1 <= '0';
+            rst <= rst_s1;
+        end if;
+    end process; 
+
+    -- Button debounce
+    dbnc_u : entity debounce port map (clk => clk, rst => rst, btn => BTNU, pulse => up);
+    dbnc_d : entity debounce port map (clk => clk, rst => rst, btn => BTND, pulse => down);
+    dbnc_l : entity debounce port map (clk => clk, rst => rst, btn => BTNL, pulse => left);
+    dbnc_r : entity debounce port map (clk => clk, rst => rst, btn => BTNR, pulse => right);
+
+
+    -- This block handles cursor location adjustment
+    c_adj : entity cursor_adjust port map (
+        clk => clk,
+        rst => rst,
+        up => up,
+        down => down,
+        left => left,
+        right => right,
+        col => cursor_col,
+        row => cursor_row
+    );
+
+    -- The seg7_disp_value upper bits are unused.
+    -- The third byte is the cursor column.
+    -- The last byte is the cursor row.
+    seg7_disp_value(31 downto 16) <= X"0000";
+    seg7_disp_value(15 downto 8) <= std_logic_vector(cursor_col);
+    seg7_disp_value(7 downto 0) <= std_logic_vector(cursor_row);
 
     -- The 7 segment controller displays the cursor position
     s7_ctrl : entity seg7_controller port map (
