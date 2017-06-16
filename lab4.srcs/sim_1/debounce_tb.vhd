@@ -3,7 +3,7 @@
 -- Author: Todd Blackmon
 --
 -- Description:
--- Basic testbench to check the pulse generator.
+-- Basic testbench to check the debounce circuit.
 --
 ----------------------------------------------------------------------------------
 
@@ -13,15 +13,15 @@ use IEEE.STD_LOGIC_1164.ALL;
 use IEEE.NUMERIC_STD.ALL;
 
 
-entity test_pulse_generator_tb is
-end test_pulse_generator_tb;
+entity debounce_tb is
+end debounce_tb;
 
-architecture Testbench of test_pulse_generator_tb is
+architecture Testbench of debounce_tb is
 
 signal clk : std_logic;
 signal rst : std_logic;
-signal period : unsigned (26 downto 0) := to_unsigned (100000, 27);
-signal pulse_out : std_logic;
+signal btn : std_logic;
+signal pulse : std_logic;
 signal clk_count : natural := 0;
 
 begin
@@ -33,17 +33,34 @@ begin
         if (rst = '0') then
             clk_count <= clk_count + 1;
         end if;
+        
         clk <= '1';
         wait for 5 ns;
         clk <= '0';
         wait for 5 ns;
     end process;
 
-    dut : entity work.pulse_generator port map (
+    process
+    begin
+        btn <= '0';
+        wait for 100 ns;
+        btn <= '1';
+        wait for 20 ns;
+        btn <= '0';
+        wait for 20 ns;
+        btn <= '1';
+        wait for 200 us;
+        btn <= '0';
+        wait;
+    end process;
+
+    dut : entity work.debounce
+    generic map (debounce_limit => 10000) 
+    port map (
         clk => clk,
         rst => rst,
-        period => period,
-        pulse_out => pulse_out
+        btn => btn,
+        pulse => pulse
     );
 
 

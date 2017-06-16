@@ -12,6 +12,7 @@ use IEEE.STD_LOGIC_1164.ALL;
 use IEEE.NUMERIC_STD.ALL;
 
 entity debounce is
+    generic (debounce_limit: natural := 10000000);
     Port ( clk : in STD_LOGIC;
            rst : in STD_LOGIC;
            btn : in STD_LOGIC;
@@ -19,11 +20,10 @@ entity debounce is
 end debounce;
 
 architecture Behavioral of debounce is
-    signal debounce_count : unsigned (16 downto 0);
+    signal debounce_count : unsigned (23 downto 0);
     signal btn_cur : std_logic;
     signal btn_s, btn_s2 : std_logic;
     signal btn_diff : std_logic;
-    constant debounce_limit : integer := 100000;
 begin
 
     -- Double flop for asynchronous input
@@ -63,8 +63,5 @@ begin
             end if;
         end if;
     end process;
-
-
-
 
 end Behavioral;

@@ -9,7 +9,6 @@
 --
 ----------------------------------------------------------------------------------
 
-
 library IEEE;
 use IEEE.STD_LOGIC_1164.ALL;
 use IEEE.NUMERIC_STD.ALL;
@@ -17,6 +16,7 @@ use work.utility.all;
 use work.all;
 
 entity lab4_top is
+    generic (debounce_limit: natural := 10000000);
     Port ( CLK100MHZ : in STD_LOGIC;
            SW : in STD_LOGIC;
            BTNU : in STD_LOGIC;
@@ -60,11 +60,21 @@ begin
     end process; 
 
     -- Button debounce
-    dbnc_u : entity debounce port map (clk => clk, rst => rst, btn => BTNU, pulse => up);
-    dbnc_d : entity debounce port map (clk => clk, rst => rst, btn => BTND, pulse => down);
-    dbnc_l : entity debounce port map (clk => clk, rst => rst, btn => BTNL, pulse => left);
-    dbnc_r : entity debounce port map (clk => clk, rst => rst, btn => BTNR, pulse => right);
-
+    dbnc_u : entity debounce
+        generic map (debounce_limit => debounce_limit) 
+        port map (clk => clk, rst => rst, btn => BTNU, pulse => up);
+        
+    dbnc_d : entity debounce
+        generic map (debounce_limit => debounce_limit)
+        port map (clk => clk, rst => rst, btn => BTND, pulse => down);
+        
+    dbnc_l : entity debounce
+        generic map (debounce_limit => debounce_limit)
+        port map (clk => clk, rst => rst, btn => BTNL, pulse => left);
+        
+    dbnc_r : entity debounce
+        generic map (debounce_limit => debounce_limit) 
+        port map (clk => clk, rst => rst, btn => BTNR, pulse => right);
 
     -- This block handles cursor location adjustment
     c_adj : entity cursor_adjust port map (
