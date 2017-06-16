@@ -15,7 +15,9 @@ use work.utility.all;
 entity vga_controller is
     Port ( clk : in STD_LOGIC;
            rst : in STD_LOGIC;
-           pixel : in RGB4;
+           pix_r : in std_logic_vector (3 downto 0);
+           pix_g : in std_logic_vector (3 downto 0);
+           pix_b : in std_logic_vector (3 downto 0);
            row : out STD_LOGIC_VECTOR (8 downto 0);
            col : out STD_LOGIC_VECTOR (9 downto 0);
            RED : out STD_LOGIC_VECTOR (3 downto 0);
@@ -28,6 +30,13 @@ end vga_controller;
 architecture Behavioral of vga_controller is
 
 begin
-
+    process (clk)
+    begin
+        if (rising_edge(clk)) then
+            RED <= pix_r;
+            BLU <= pix_b;
+            GRN <= pix_g;
+        end if;
+    end process;
 
 end Behavioral;
