@@ -16,7 +16,7 @@ use work.utility.all;
 use work.all;
 
 entity lab4_top is
-    generic (debounce_limit: natural := 10000000);
+    generic (debounce_limit: natural := 5000000);
     Port ( CLK100MHZ : in STD_LOGIC;
            SW : in STD_LOGIC;
            BTNU : in STD_LOGIC;
