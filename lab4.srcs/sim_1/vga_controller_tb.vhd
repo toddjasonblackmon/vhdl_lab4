@@ -58,8 +58,10 @@ begin
         variable t : time;
         variable pix_r_var, pix_g_var, pix_b_var : std_logic_vector (3 downto 0);
         variable RED_var, GRN_var, BLU_var : std_logic_vector (3 downto 0);
+        variable HSYNC_var, VSYNC_var : std_logic;
         variable out_valid : std_logic;
         variable rst_var : std_logic;
+        variable col_var, row_var : integer;
         constant dummy : bit := '1';
     begin
         while not endfile (data_fp) loop
@@ -71,9 +73,13 @@ begin
             read (sample, pix_b_var);
             read (sample, out_valid);
             if (out_valid = '1') then
+                read (sample, HSYNC_var);
+                read (sample, VSYNC_var);
                 read (sample, RED_var);
                 read (sample, GRN_var);
                 read (sample, BLU_var);
+                read (sample, col_var);
+                read (sample, row_var);
             end if;
             
             wait for t;
@@ -84,10 +90,14 @@ begin
             pix_g <= pix_g_var;
             pix_b <= pix_b_var;
             
-            if (out_valid = '1') then            
+            if (out_valid = '1') then   
+                assert HSYNC = HSYNC_var report "HSYNC output does not match" severity Error;
+                assert HSYNC = HSYNC_var report "VSYNC output does not match" severity Error;         
                 assert RED = RED_var report "Red output does not match" severity Error;
                 assert GRN = GRN_var report "Green output does not match" severity Error;
                 assert BLU = BLU_var report "Blue output does not match" severity Error;
+                assert to_integer(unsigned(col)) = col_var report "column output does not match" severity Error;
+                assert to_integer(unsigned(row)) = row_var report "row output does not match" severity Error;
             end if;
         end loop;
         sim_run <= '0';

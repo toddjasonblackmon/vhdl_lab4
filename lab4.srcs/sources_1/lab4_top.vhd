@@ -35,12 +35,16 @@ end lab4_top;
 architecture Behavioral of lab4_top is
     signal clk : std_logic;
     signal rst : std_logic;
-    signal cursor_row : std_logic_vector (7 downto 0);
-    signal cursor_col : std_logic_vector (7 downto 0);
+    signal cursor_row : std_logic_vector (3 downto 0);
+    signal cursor_col : std_logic_vector (4 downto 0);
     signal seg7_disp_value : std_logic_vector (31 downto 0);
     signal anode : std_logic_vector (7 downto 0);
     signal up, down, left, right : std_logic;
     signal rst_s1 : std_logic;
+    
+    signal pix_r, pix_g, pix_b : std_logic_vector (3 downto 0);
+    signal row : std_logic_vector (8 downto 0);
+    signal col : std_logic_vector (9 downto 0);
 begin
     -- Internal signal rename
     clk <= CLK100MHZ;
@@ -92,8 +96,8 @@ begin
     -- The third byte is the cursor column.
     -- The last byte is the cursor row.
     seg7_disp_value(31 downto 16) <= X"0000";
-    seg7_disp_value(15 downto 8) <= std_logic_vector(cursor_col);
-    seg7_disp_value(7 downto 0) <= std_logic_vector(cursor_row);
+    seg7_disp_value(15 downto 8) <= "000" & std_logic_vector(cursor_col);
+    seg7_disp_value(7 downto 0) <= "0000" & std_logic_vector(cursor_row);
 
     -- The 7 segment controller displays the cursor position
     s7_ctrl : entity seg7_controller port map (
@@ -106,5 +110,35 @@ begin
 
     -- Force the upper 4 anode lines to be alway inactive high
     AN <= "1111" & anode(3 downto 0);
+
+    -- Pixel generator
+    process (row, col, cursor_col, cursor_row)
+    begin
+        pix_r <= "0000";
+        pix_g <= "0000";
+        pix_b <= "0000";
+    
+        -- The cursor is given priority
+        -- The cursor position is in grid units, so some slicing is needed.
+        if ((row(8 downto 5) = cursor_row) and 
+            (col(9 downto 5) = cursor_col)) then
+            pix_r <= "1111";
+            
+        -- Otherwise do a 32-pixel green-blue checkerboard pattern.            
+        elsif ((row(5) xor col(5)) = '1') then
+            pix_b <= "1111";
+        else
+            pix_g <= "1111";
+        end if;
+    end process;
+
+    -- VGA controller
+    vga : entity vga_controller port map (
+        clk => CLK100MHZ,
+        rst => rst,
+        pix_r => pix_r, pix_g => pix_g, pix_b => pix_b,
+        row => row, col => col,
+        RED => VGA_R, GRN => VGA_G, BLU => VGA_B,
+        VSYNC => VGA_VS, HSYNC => VGA_HS);
 
 end Behavioral;
