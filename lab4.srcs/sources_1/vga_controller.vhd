@@ -185,3 +185,141 @@ begin
     row <= std_logic_vector(i_row);
 
 end Behavioral;
+
+-- Attempt the same as a FSM
+architecture B2 of vga_controller is
+    -- DIV 4 signals
+    signal next_pixel : std_logic;
+    signal div4 : unsigned (1 downto 0);
+    
+    -- Horizontal Sequencer
+    type state_type is (FRONT_PORCH, SYNC, BACK_PORCH, DISPLAY);
+    signal hstate, vstate : state_type;
+    
+    signal last_col : std_logic;
+    signal i_col : unsigned (9 downto 0);       -- Internal version of col
+    signal next_row : std_logic;                -- Pulses to increment rows.
+    
+    -- Horizontal Sequence Constants
+    constant num_h_blank_pixels : unsigned (7 downto 0) := to_unsigned (160, 8);
+    constant num_h_disp_pixels : unsigned (9 downto 0) := to_unsigned (640, 10);
+    constant hsync_start : unsigned (7 downto 0) := to_unsigned(16, 8);
+    constant hsync_stop : unsigned (7 downto 0) := to_unsigned(112, 8);
+    
+    -- Vertical Sequencer    
+    signal last_row : std_logic;
+    signal i_row : unsigned (8 downto 0);       -- Internal version of row
+    
+    -- Vertical Sequence Constants
+    constant num_v_blank_pixels : unsigned (5 downto 0) := to_unsigned (41, 6);
+    constant num_v_disp_pixels : unsigned (8 downto 0) := to_unsigned (480, 9);
+    constant vsync_start : unsigned (5 downto 0) := to_unsigned(10, 6);
+    constant vsync_stop : unsigned (5 downto 0) := to_unsigned(12, 6);
+
+begin
+    -- DIV4
+    process (clk, rst)
+    begin
+        if (rst = '1') then
+            div4 <= "00";
+        elsif (rising_edge(clk)) then
+            div4 <= div4 + 1;
+        end if;
+    end process;
+    
+    -- Next_pixel is only high for the cycle where both are high.
+    -- This will be one pulse in 4, so at a 25 MHz rate.    
+    next_pixel <= div4(1) and div4(0);
+    
+    -- Horizontal Thresholds
+    last_col <= '1' when i_col = (num_h_disp_pixels-1) else '0';
+    
+    -- Horizontal Display Counters
+    process (clk, rst)
+    begin
+        if (rst = '1') then
+            i_col <= (others => '0');
+            next_row <= '0';
+            hstate <= FRONT_PORCH;
+        elsif (rising_edge(clk)) then
+            next_row <= '0';    -- Default to no pulse.
+            
+            if (next_pixel = '1') then
+                i_col <= i_col + 1;
+
+                case hstate is
+                when FRONT_PORCH => 
+                    if i_col = (hsync_start-1) then
+                        hstate <= SYNC;
+                    end if;
+                when SYNC =>
+                    if i_col = (hsync_stop-1) then
+                        hstate <= BACK_PORCH;
+                    end if;
+                when BACK_PORCH => null;
+                    if i_col = (num_h_blank_pixels-1) then
+                        hstate <= DISPLAY;
+                        i_col <= (others => '0');
+                    end if;
+                when DISPLAY => null;
+                    if last_col = '1' then
+                        i_col <= (others => '0');
+                        hstate <= FRONT_PORCH;
+                        next_row <= '1';
+                    end if;
+                end case;
+                   
+            end if;
+        end if;
+    end process;
+
+    -- Vertical Thresholds
+    last_row <= '1' when i_row = (num_v_disp_pixels-1) else '0';
+    
+    -- Vertical Display Counters
+    process (clk, rst)
+    begin
+        if (rst = '1') then
+            vstate <= FRONT_PORCH;
+            i_row <= (others => '0');
+        elsif (rising_edge(clk))then
+            if (next_row = '1') then
+                i_row <= i_row + 1;
+
+                case vstate is
+                when FRONT_PORCH => 
+                    if i_row = (vsync_start-1) then
+                        vstate <= SYNC;
+                    end if;
+                when SYNC =>
+                    if i_row = (vsync_stop-1) then
+                        vstate <= BACK_PORCH;
+                    end if;
+                when BACK_PORCH => null;
+                    if i_row = (num_v_blank_pixels-1) then
+                        vstate <= DISPLAY;
+                        i_row <= (others => '0');
+                    end if;
+                when DISPLAY => null;
+                    if last_row = '1' then
+                        i_row <= (others => '0');
+                        vstate <= FRONT_PORCH;
+                    end if;
+                end case;
+                   
+            end if;            
+        end if;
+    end process;  
+        
+    HSYNC <= '0' when hstate = SYNC else '1';
+    VSYNC <= '0' when vstate = SYNC else '1';
+    
+    
+    RED <= pix_r when hstate = DISPLAY and vstate = DISPLAY else "0000";
+    GRN <= pix_g when hstate = DISPLAY and vstate = DISPLAY else "0000";
+    BLU <= pix_b when hstate = DISPLAY and vstate = DISPLAY else "0000";
+    
+    col <= std_logic_vector(i_col) when hstate = DISPLAY else "0000000000";
+    row <= std_logic_vector(i_row) when vstate = DISPLAY else "000000000";
+
+end B2;

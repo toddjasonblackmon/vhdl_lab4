@@ -105,7 +105,7 @@ begin
         wait;
    end process;
     
-    CUT: entity vga_controller
+    CUT: entity vga_controller (B2)
         port map (clk, rst, pix_r, pix_g, pix_b,
                   row, col, RED, BLU, GRN, 
                   VSYNC, HSYNC);
