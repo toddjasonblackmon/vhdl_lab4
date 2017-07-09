@@ -323,3 +323,113 @@ begin
     row <= std_logic_vector(i_row) when vstate = DISPLAY else "000000000";
 
 end B2;
+
+architecture MinFlops of vga_controller is
+
+    -- DIV 4 signals
+signal next_pixel : std_logic;
+signal div4 : unsigned (1 downto 0);
+
+-- Horizontal Sequencer
+signal last_col : std_logic;
+signal hdisplay : std_logic;
+signal next_row : std_logic;                -- Pulses to increment rows.
+
+signal i_col : unsigned (9 downto 0);       -- Internal version of col
+
+-- Horizontal Sequence Constants
+--   0 - 639 is display pixels
+-- 640 - 655 is front porch
+-- 656 - 751 is sync
+-- 752 - 799 is back porch (and rollover) 
+constant num_h_disp_pixels : unsigned (9 downto 0) := to_unsigned (640, 10);
+constant num_h_total_pixels : unsigned (9 downto 0) := to_unsigned (800, 10);
+constant hsync_start : unsigned (9 downto 0) := to_unsigned(656, 10);
+constant hsync_stop : unsigned (9 downto 0) := to_unsigned(751, 10);
+
+-- Vertical Sequencer    
+signal last_row : std_logic;
+signal vdisplay : std_logic;
+
+signal i_row : unsigned (9 downto 0);       -- Internal version of row
+
+-- Vertical Sequence Constants
+--    0 - 479 is display rows
+--  480 - 489 is front porch
+--  490 - 491 is sync
+--  492 - 520 is back porch
+constant num_v_disp_pixels : unsigned (9 downto 0) := to_unsigned (480, 10);
+constant num_v_total_pixels : unsigned (9 downto 0) := to_unsigned (521, 10);
+constant vsync_start : unsigned (9 downto 0) := to_unsigned(490, 10);
+constant vsync_stop : unsigned (9 downto 0) := to_unsigned(491, 10);
+
+begin
+-- DIV4
+process (clk, rst)
+begin
+    if (rst = '1') then
+        div4 <= "00";
+    elsif (rising_edge(clk)) then
+        div4 <= div4 + 1;
+    end if;
+end process;
+
+-- Next_pixel is only high for the cycle where both are high.
+-- This will be one pulse in 4, so at a 25 MHz rate.    
+next_pixel <= div4(1) and div4(0);
+
+-- Horizontal Thresholds
+hdisplay <= '1' when i_col < num_h_disp_pixels else '0';
+last_col <= '1' when i_col = (num_h_total_pixels-1) else '0';
+
+-- Horizontal Display Counters
+process (clk, rst)
+begin
+    if (rst = '1') then
+        i_col <= num_h_disp_pixels; -- Start counter at front porch
+    elsif (rising_edge(clk)) then
+        if next_pixel = '1' then
+            if last_col = '1' then
+                i_col <= (others => '0');
+            else
+                i_col <= i_col + 1;
+            end if;
+            
+        end if;
+    end if;
+end process;
+
+next_row <= '1' when i_col = (num_h_disp_pixels-1) and next_pixel = '1' else '0';
+    
+-- Vertical Thresholds
+vdisplay <= '1' when i_row < num_v_disp_pixels else '0';
+last_row <= '1' when i_row = (num_v_total_pixels-1) else '0';
+
+-- Veritcal Display Counter
+process (clk, rst)
+begin
+    if (rst = '1') then
+        i_row <= num_v_disp_pixels; -- Start counter at front porch
+    elsif (rising_edge(clk)) then
+        if next_row = '1' then
+            if last_row = '1' then
+                i_row <= (others => '0');
+            else
+                i_row <= i_row + 1;
+            end if;
+        end if;
+    end if;
+end process;
+
+HSYNC <= '0' when i_col >= hsync_start and i_col <= hsync_stop else '1';
+VSYNC <= '0' when i_row >= vsync_start and i_row <= vsync_stop else '1';
+
+
+RED <= pix_r when hdisplay = '1' and vdisplay = '1' else "0000";
+GRN <= pix_g when hdisplay = '1' and vdisplay = '1' else "0000";
+BLU <= pix_b when hdisplay = '1' and vdisplay = '1' else "0000";
+
+col <= std_logic_vector(i_col) when hdisplay = '1' else "0000000000";
+row <= std_logic_vector(i_row(8 downto 0)) when vdisplay = '1' else "000000000";
+
+end MinFlops;

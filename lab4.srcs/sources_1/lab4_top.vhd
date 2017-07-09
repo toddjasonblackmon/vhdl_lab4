@@ -133,7 +133,7 @@ begin
     end process;
 
     -- VGA controller
-    vga : entity vga_controller (B2) port map (
+    vga : entity vga_controller (MinFlops) port map (
         clk => CLK100MHZ,
         rst => rst,
         pix_r => pix_r, pix_g => pix_g, pix_b => pix_b,
